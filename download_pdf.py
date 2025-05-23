@@ -1,43 +1,62 @@
-import requests
+#request ne marche pas dans notre cas parce que le site utilise surement une protection du coup j'utilise cloudscraper qui est une bibliothéque qui permet de contourner la protection anti-bot de cloudflare
+import cloudscraper
 from bs4 import BeautifulSoup
-import os
+from urllib.parse import urljoin
+import time
 
-# URL de la page des décisions
-url = "https://www.ipo.gov.uk/t-challenge-decision-results.htm"
+BASE_URL = "https://www.ipo.gov.uk"
+START_PAGE = "https://www.ipo.gov.uk/t-challenge-decision-results/t-challenge-decision-results-gen.htm?YearFrom=2024&YearTo=2024"
 
-# En-têtes pour contourner l'erreur 403 (anti-bot)
-headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
-}
+scraper = cloudscraper.create_scraper()
 
-# Faire la requête HTTP avec les headers
-response = requests.get(url, headers=headers)
-response.raise_for_status()  # Stoppe si la requête échoue
+def get_pdf_link_from_decision_page(url):
+   
+    try:
+        resp = scraper.get(url)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-# Parser le HTML avec BeautifulSoup
-soup = BeautifulSoup(response.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a['href']
+            if href.lower().endswith(".pdf"):
+                return urljoin(BASE_URL, href)
+        return None
+    except Exception as e:
+        print(f"Erreur en accédant à {url} : {e}")
+        return None
 
-# Créer un dossier pour enregistrer les fichiers
-os.makedirs("decisions", exist_ok=True)
+def main():
+    # Récupérer la page principale
+    resp = scraper.get(START_PAGE)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
 
-# Récupérer tous les liens vers des PDF de décisions
-pdf_links = []
-for a in soup.find_all("a", href=True):
-    href = a["href"]
-    if href.endswith(".pdf") and "/t-challenge-decision-results/" in href:
-        full_url = "https://www.ipo.gov.uk" + href
-        pdf_links.append(full_url)
+    # Extraire les liens vers pages individuelles de décisions
+    decision_links = []
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag['href']
+        if "t-challenge-decision-results-bl" in href:
+            full_url = urljoin(BASE_URL, href)
+            decision_links.append(full_url)
 
-print(f"✅ {len(pdf_links)} fichiers PDF trouvés.")
+    print(f"Nombre de pages individuelles trouvées : {len(decision_links)}")
 
-# Télécharger les fichiers PDF
-for link in pdf_links:
-    filename = link.split("/")[-1]
-    filepath = os.path.join("decisions", filename)
-    if not os.path.exists(filepath):  # éviter les doublons
-        pdf_response = requests.get(link, headers=headers)
-        with open(filepath, "wb") as f:
-            f.write(pdf_response.content)
-        print(f"⬇️ Téléchargé : {filename}")
-    else:
-        print(f"✅ Déjà présent : {filename}")
+    # Pour chaque page individuelle, récupérer le lien PDF et l'afficher
+    pdf_links_found = []
+    for idx, decision_url in enumerate(decision_links, 1):
+        print(f"[{idx}/{len(decision_links)}] Traitement de {decision_url}")
+
+        pdf_url = get_pdf_link_from_decision_page(decision_url)
+        if pdf_url is None:
+            print("Pas de PDF trouvé, passage au suivant.")
+            continue
+
+        print(f"Lien PDF trouvé : {pdf_url}")
+        pdf_links_found.append(pdf_url)
+
+        time.sleep(0.5)  # Pause légère sinon j'ai des erreurs 
+
+    print(f"\nTotal de PDF trouvés : {len(pdf_links_found)}")
+
+if __name__ == "__main__":
+    main()
