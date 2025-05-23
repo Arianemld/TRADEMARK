@@ -1,89 +1,85 @@
-# Pour éviter l'affichage des logs du pdfplumber
-import logging
-logging.getLogger("pdfminer").setLevel(logging.ERROR)
+import os, re, csv, pdfplumber
+from pathlib import Path
+from transformers import pipeline, AutoTokenizer, AutoModelForQuestionAnswering
 
-import os
-import pdfplumber
-import re
-import csv
+# 1. Modèle public
+MODEL_NAME = "AgentPublic/camembert-base-squadFR-fquad-piaf"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model     = AutoModelForQuestionAnswering.from_pretrained(MODEL_NAME)
+qa        = pipeline("question-answering", model=model, tokenizer=tokenizer)
 
-folder = "decisions"
-results = []
-non_trouves = []
+# 2. Sliding window QA
+def extract_qa(question, context, window_size=512, stride=128):
+    inputs = tokenizer(context, return_overflowing_tokens=True,
+                       max_length=window_size, stride=stride,
+                       truncation=True)
+    best = {"score": 0.0, "answer": None}
+    for i in range(len(inputs["input_ids"])):
+        span = {
+            "question": question,
+            "context": tokenizer.decode(inputs["input_ids"][i])
+        }
+        res = qa(span)
+        if res["score"] > best["score"]:
+            best = res
+    return best["answer"] or "Non détecté"
 
-for filename in os.listdir(folder):
-    if filename.endswith(".pdf"):
-        path = os.path.join(folder, filename)
-        with pdfplumber.open(path) as pdf:
-            # 1. Lire la première page pour extraire le numéro de décision
-            first_page = pdf.pages[0]
-            text = first_page.extract_text()
+# 3. Regex fallback
+def extract_regex(pattern, text, default="Non détecté"):
+    m = re.search(pattern, text, flags=re.IGNORECASE)
+    return m.group(1).strip() if m else default
 
-            match = re.search(r"O\s*/?\s*-?\s*\d{3,4}\s*/?\s*-?\s*\d{2}", text, re.IGNORECASE)
-            if match:
-                decision_number = re.sub(r"\s+", "", match.group()).replace("-", "")
-            else:
-                decision_number = "Non trouvé"
-                non_trouves.append(filename)
+QUESTIONS = {
+    "numero_decision":   "Quel est le numéro de la décision ?",
+    "date_decision":     "Quelle est la date de décision ?",
+    "nom_marques":       "Quels sont le(s) nom(s) et numéro(s) des marques concernées ?",
+    "classes_nice":      "Quelles sont les classes NICE mentionnées ?",
+    "motif_opposition":  "Quel est le motif de l'opposition ?",
+    "resultat_decision": "Quel est le résultat de la décision ?"
+}
 
-            # 2. Parcourir toutes les pages pour construire le texte complet
-            full_text = ""
-            for page in pdf.pages:
-                content = page.extract_text()
-                if content:
-                    full_text += content + "\n"
+REGEX_PATTERNS = {
+    "numero_decision":   r"Décision\s*n°\s*([\w/-]+)",
+    "date_decision":     r"\b\d{1,2}\s*(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s*\d{4}\b",
+    "classes_nice":      r"classes?\s*:\s*([\d,\s]+)"
+}
 
-            # 3. Recherche des classes NICE dans tout le texte
-            class_mentions = re.findall(r"(?:class(?:es)?)\s+[0-9,\sand&]+", full_text, re.IGNORECASE)
+def extract_full_text(pdf_path):
+    pages = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for p in pdf.pages:
+            txt = p.extract_text()
+            if txt: pages.append(txt)
+    return "\n".join(pages)
 
-            if class_mentions:
-                all_classes = []
-                for mention in class_mentions:
-                    all_classes.extend(re.findall(r"\d{1,2}", mention))
-                classes = ", ".join(sorted(set(all_classes), key=int))
-            else:
-                classes = "Non trouvée"
+def process_pdf(path):
+    raw = extract_full_text(path)
+    data = {"filename": Path(path).name}
+    for field, question in QUESTIONS.items():
+        # priorité QA si context < 100k caractères, sinon regex
+        if len(raw) < 100_000:
+            ans = extract_qa(question, raw)
+        else:
+            ans = extract_regex(REGEX_PATTERNS.get(field, "."), raw)
+        data[field] = ans
+    return data
 
-            # 4. Recherche de l'applicant (nettoyage intégré)
-            applicant_match = re.search(
-                r"(?:APPLICATION NO\.|INTERNATIONAL REGISTRATION\s+NO\.)[^\n]*\n(?:DESIGNATING THE UK\s*)?\n?BY\s+([^\n]+)",
-                full_text, re.IGNORECASE)
-            if applicant_match:
-                applicant = applicant_match.group(1).strip()
-                applicant = re.sub(r"^(BY|TO REGISTER|IN THE NAME OF)\s*", "", applicant, flags=re.IGNORECASE).strip()
-            else:
-                applicant = "Non trouvé"
+def process_folder(folder, output_csv="decisions.csv"):
+    rows = []
+    for pdf in Path(folder).glob("*.pdf"):
+        print(f"→ {pdf.name}")
+        rows.append(process_pdf(pdf))
+    keys = ["filename"] + list(QUESTIONS.keys())
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(rows)
+    print("✅ Fini :", output_csv)
 
-
-            # 5. Recherche de l'opponent (nettoyage intégré)
-            opponent_match = re.search(
-                r"OPPOSITION(?: THERETO)?\s+UNDER NO\..*?\n(?:BY|IN THE NAME OF)?\s*([^\n]+)",
-                full_text, re.IGNORECASE)
-            if opponent_match:
-                opponent = opponent_match.group(1).strip()
-                opponent = re.sub(r"^(BY|AND|IN THE NAME OF)\s*", "", opponent, flags=re.IGNORECASE).strip()
-            else:
-                opponent = "Non trouvé"
-
-            # 6. Sauvegarde du résultat pour ce fichier
-            results.append({
-                "filename": filename,
-                "decision_number": decision_number,
-                "applicant": applicant,
-                "opponent": opponent,
-                "classes": classes
-            })
-
-# 7. Écriture des résultats dans un CSV
-with open("decision_numbers.csv", "w", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=["filename", "decision_number", "applicant", "opponent", "classes"])
-    writer.writeheader()
-    writer.writerows(results)
-
-print("✅ Extraction terminée. Résultats enregistrés dans 'decision_numbers.csv'.")
-
-# 8. Affichage des fichiers où le numéro de décision est manquant
-if non_trouves:
-    print("\n❌ Aucun numéro trouvé dans les fichiers suivants :")
-    for name in non_trouves:
-        print(" -", name)
+if __name__ == "__main__":
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("folder", help="Dossier des PDF")
+    p.add_argument("--output", default="decisions.csv")
+    args = p.parse_args()
+    process_folder(args.folder, args.output)
