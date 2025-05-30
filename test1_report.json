@@ -1,0 +1,143 @@
+{
+  "processing_date": "2025-05-31T00:23:04.269369",
+  "total_files": 9,
+  "complete_extractions": 1,
+  "field_statistics": {
+    "decision_number": 3,
+    "decision_date": 8,
+    "applicant": 9,
+    "opponent": 9,
+    "classes_nice": 9,
+    "motif_opposition": 2,
+    "resultat_decision": 4
+  },
+  "model_used": "deepset/roberta-base-squad2",
+  "results": [
+    {
+      "filename": "o031825.pdf",
+      "decision_number": "",
+      "decision_date": "16 April 2024",
+      "applicant": "or with his",
+      "opponent": "relies upon the mark detailed below.",
+      "classes_nice": "30",
+      "motif_opposition": "",
+      "resultat_decision": "",
+      "missing_fields": [
+        "decision_number",
+        "motif_opposition",
+        "resultat_decision"
+      ]
+    },
+    {
+      "filename": "o033525.pdf",
+      "decision_number": "1474873",
+      "decision_date": "1 June 1981",
+      "applicant": "1474873",
+      "opponent": "Biogen MA Inc",
+      "classes_nice": "5, 29",
+      "motif_opposition": "",
+      "resultat_decision": "",
+      "missing_fields": [
+        "motif_opposition",
+        "resultat_decision"
+      ]
+    },
+    {
+      "filename": "o035325.pdf",
+      "decision_number": "",
+      "decision_date": "",
+      "applicant": "’s trade mark;",
+      "opponent": "”) under ss. 5(2)(b), 5(3) and 5(4)(a) of the Trade Marks Act 1994 (“the Act”).",
+      "classes_nice": "3",
+      "motif_opposition": "",
+      "resultat_decision": "damage to its goodwill",
+      "missing_fields": [
+        "decision_number",
+        "decision_date",
+        "motif_opposition"
+      ]
+    },
+    {
+      "filename": "o038625.pdf",
+      "decision_number": "440494",
+      "decision_date": "17 November 2014",
+      "applicant": "”) applied to register the",
+      "opponent": "filed no evidence, the claims under",
+      "classes_nice": "9, 14, 16, 18, 21, 24, 25, 35, 36, 41, 42",
+      "motif_opposition": "all the goods and services in the application",
+      "resultat_decision": "",
+      "missing_fields": [
+        "resultat_decision"
+      ]
+    },
+    {
+      "filename": "o039525.pdf",
+      "decision_number": "",
+      "decision_date": "20 June 2022",
+      "applicant": "”) is the",
+      "opponent": "9178199542",
+      "classes_nice": "29",
+      "motif_opposition": "",
+      "resultat_decision": "",
+      "missing_fields": [
+        "decision_number",
+        "motif_opposition",
+        "resultat_decision"
+      ]
+    },
+    {
+      "filename": "o039625.pdf",
+      "decision_number": "",
+      "decision_date": "08 December 2023",
+      "applicant": "”) applied to",
+      "opponent": "Balanz Capital UK LLP",
+      "classes_nice": "9, 16, 35, 36, 41, 42",
+      "motif_opposition": "",
+      "resultat_decision": "",
+      "missing_fields": [
+        "decision_number",
+        "motif_opposition",
+        "resultat_decision"
+      ]
+    },
+    {
+      "filename": "o040925.pdf",
+      "decision_number": "",
+      "decision_date": "12 September 2024",
+      "applicant": "3849951",
+      "opponent": "Daniel Tapper",
+      "classes_nice": "35",
+      "motif_opposition": "",
+      "resultat_decision": "both parties’ oppositions succeeded in full",
+      "missing_fields": [
+        "decision_number",
+        "motif_opposition"
+      ]
+    },
+    {
+      "filename": "o041025.pdf",
+      "decision_number": "",
+      "decision_date": "13 March 2015",
+      "applicant": "of the earlier mark,",
+      "opponent": "s”) partially opposed protection of the IR in the UK based upon sections",
+      "classes_nice": "11",
+      "motif_opposition": "",
+      "resultat_decision": "Internal use by the proprietor does not suffice",
+      "missing_fields": [
+        "decision_number",
+        "motif_opposition"
+      ]
+    },
+    {
+      "filename": "o041125.pdf",
+      "decision_number": "0350/",
+      "decision_date": "14 April 2025",
+      "applicant": "”), being",
+      "opponent": "Enabling Enterprise CIC",
+      "classes_nice": "9, 16, 35, 41, 42",
+      "motif_opposition": "Baker & McKenzie LLP",
+      "resultat_decision": "a typographical error",
+      "missing_fields": []
+    }
+  ]
+}
