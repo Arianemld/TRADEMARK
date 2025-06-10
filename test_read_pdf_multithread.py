@@ -47,12 +47,12 @@ qa_pipeline = pipeline(
 # --- Questions cibles en anglais ---
 QUESTIONS = {
     'decision_number':    "What is the decision number?",
-    'decision_date':      "What is the date of the decision?",
-    'applicant':          "What is the name and number of the applicant's trademark?",
-    'opponent':           "What is the name and number of the opponent?",
-    'classes_nice':       "What are the NICE classes mentioned?",
-    'motif_opposition':   "What is the ground for opposition?",
-    'resultat_decision':  "What is the result of the decision?"
+    # 'decision_date':      "What is the date of the decision?",
+    # 'applicant':          "What is the name and number of the applicant's trademark?",
+    # 'opponent':           "What is the name and number of the opponent?",
+    # 'classes_nice':       "What are the NICE classes mentioned?",
+    # 'motif_opposition':   "What is the ground for opposition?",
+    # 'resultat_decision':  "What is the result of the decision?"
 }
 
 # Seuil minimal de confiance pour accepter une réponse
@@ -64,38 +64,7 @@ FALLBACK_PATTERNS = {
         r'(?:Decision|DECISION)\s*(?:No\.?|Number|#)\s*(\d+[-/]?\d*)',
         r'Case\s*(?:No\.?|Number|#)\s*(\d+[-/]?\d*)',
         r'Opposition\s*(?:No\.?|Number|#)\s*(\d+[-/]?\d*)'
-    ],
-    'decision_date': [
-        r'(?:dated?|Date[d]?)\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-        r'(?:dated?|Date[d]?)\s*:?\s*(\d{1,2}\s+\w+\s+\d{4})',
-        r'(?:on|On)\s+(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-        r'(?:on|On)\s+(\d{1,2}\s+\w+\s+\d{4})'
-    ],
-    'applicant': [
-        r'(?:Applicant|APPLICANT|Proprietor|PROPRIETOR)\s*:?\s*([^\n]+)',
-        r'(?:Owner|OWNER)\s*:?\s*([^\n]+)',
-        r'(?:Holder|HOLDER)\s*:?\s*([^\n]+)'
-    ],
-    'opponent': [
-        r'(?:Opponent|OPPONENT)\s*:?\s*([^\n]+)',
-        r'(?:Opposer|OPPOSER)\s*:?\s*([^\n]+)',
-        r'(?:Opposing Party|OPPOSING PARTY)\s*:?\s*([^\n]+)'
-    ],
-    'classes_nice': [
-        r'(?:class|Class|CLASS)(?:es)?\s*(?:NICE\s*)?(\d{1,2}(?:\s*,\s*\d{1,2})*)',
-        r'(?:in|for)\s+(?:class|Class)(?:es)?\s*(\d{1,2}(?:\s*,\s*\d{1,2})*)',
-        r'Nice\s+(?:class|Class)(?:es)?\s*(\d{1,2}(?:\s*,\s*\d{1,2})*)'
-    ],
-    'motif_opposition': [
-        r'(?:grounds?|GROUNDS?)\s*(?:of|for)\s*(?:opposition|OPPOSITION)\s*:?\s*([^\n]{20,200})',
-        r'(?:based on|BASED ON)\s*:?\s*([^\n]{20,200})',
-        r'(?:opposition|OPPOSITION)\s+(?:is|was)\s+(?:based|founded)\s+(?:on|upon)\s*:?\s*([^\n]{20,200})'
-    ],
-    'resultat_decision': [
-        r'(?:DECIDES?|ORDERS?|JUDGMENT|RULING)\s*:?\s*([^\n]{20,200})',
-        r'(?:opposition|OPPOSITION)\s+(?:is|was)\s+(dismissed|upheld|rejected|allowed|granted|refused|sustained)',
-        r'(?:The|THE)\s+(?:Board|BOARD|Office|OFFICE)\s+(dismisses?|upholds?|rejects?|allows?|grants?|refuses?)\s+(?:the\s+)?(?:opposition|OPPOSITION)'
-    ]
+    ]  
 }
 
 # --- Mots-clés pour validation ---
@@ -177,47 +146,7 @@ def validate_and_clean_answer(field: str, answer: str) -> str:
         # Extraire uniquement le numéro
         match = re.search(r'(\d+[-/]?\d*)', answer)
         return match.group(1) if match else answer
-    
-    elif field == 'decision_date':
-        # Normaliser les formats de dates
-        date_patterns = [
-            (r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})', lambda m: f"{m.group(1)}/{m.group(2)}/{m.group(3)}"),
-            (r'(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})', 
-             lambda m: f"{m.group(1)} {m.group(2)} {m.group(3)}"),
-            (r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2}),?\s+(\d{4})',
-             lambda m: f"{m.group(2)} {m.group(1)} {m.group(3)}")
-        ]
-        for pattern, formatter in date_patterns:
-            match = re.search(pattern, answer, re.IGNORECASE)
-            if match:
-                return formatter(match)
-        return answer
-    
-    elif field == 'classes_nice':
-        # Extraire et valider les numéros de classes (1-45)
-        classes = re.findall(r'\d+', answer)
-        valid_classes = [c for c in classes if 1 <= int(c) <= 45]
-        return ', '.join(sorted(set(valid_classes), key=int)) if valid_classes else answer
-    
-    elif field == 'motif_opposition':
-        # Limiter la longueur et nettoyer
-        answer = re.sub(r'\s+', ' ', answer)  # Normaliser les espaces
-        if len(answer) > 500:
-            answer = answer[:497] + "..."
-        return answer
-    
-    elif field == 'resultat_decision':
-        # Extraire le résultat principal
-        answer = re.sub(r'\s+', ' ', answer)
-        if len(answer) > 200:
-            # Chercher la phrase clé
-            for keyword in VALIDATION_KEYWORDS['resultat_decision']:
-                if keyword in answer.lower():
-                    start = answer.lower().find(keyword)
-                    return answer[max(0, start-50):start+150]
-            answer = answer[:197] + "..."
-        return answer
-    
+        
     return answer
 
 
